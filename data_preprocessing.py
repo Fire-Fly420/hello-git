@@ -49,7 +49,7 @@ def remove_stopwords(tokens, stopwords):
     返回:
     list: 去除停用词后的单词列表。
     """
-    filtered_tokens = [word for word in tokens if word not in stopwords]
+    filtered_tokens = [word for word in tokens if word not in stopwords and len(word) > 1] # 去除单字虚词，如“了”，“啊”等
     return filtered_tokens
 
 def tokenize_text(text):
