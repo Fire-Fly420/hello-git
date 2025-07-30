@@ -1,5 +1,7 @@
 import jieba
 import re
+import os, json, pickle
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 def clean_text(text, remove_digits=False):
     """
@@ -88,3 +90,38 @@ def preprocess_text(text, stopwords_path=None, remove_digits=False):
     # 去除停用词
     filtered_tokens = remove_stopwords(tokens, stopwords)
     return filtered_tokens
+
+class DynamicStopwords:
+    """
+    用 TF-IDF 的 IDF 值动态生成停用词表，并支持本地缓存
+    """
+    def __init__(self,
+                 cache_path='./data/dynamic_stopwords.pkl',
+                 idf_threshold=1.5):
+        self.cache_path = cache_path
+        self.idf_threshold = idf_threshold
+        self.stopwords = set()
+
+        if os.path.exists(cache_path):
+            with open(cache_path, 'rb') as f:
+                self.stopwords = pickle.load(f)
+    
+    def fit(self, texts):
+        """
+        texts: list[str]  一批原始笔记
+        根据 IDF 阈值重新计算并缓存停用词
+        """
+        if not texts:          # 空列表直接返回
+            return
+        vec = TfidfVectorizer()
+        vec.fit(texts)
+        idfs = vec.idf_
+        words = vec.get_feature_names_out()
+        self.stopwords = {w for w, idf in zip(words, idfs)
+                          if idf < self.idf_threshold}
+        os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+        with open(self.cache_path, 'wb') as f:
+            pickle.dump(self.stopwords, f)
+
+    def is_stop(self, word):
+        return word in self.stopwords
